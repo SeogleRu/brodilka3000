@@ -227,7 +227,7 @@ function joyUpdate(clientX, clientY) {
 
   // ВВЕРХ (dy<0) → moveZ<0 (назад)
   // ВНИЗ  (dy>0) → moveZ>0 (вперёд)
-  joy.moveZ = dy / JOY_RADIUS;
+  joy.moveZ = -dy / JOY_RADIUS;
 }
 
 function joyStop() {
