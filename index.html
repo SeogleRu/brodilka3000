@@ -24,7 +24,6 @@
             pointer-events: none;
             z-index: 10;
         }
-        /* Крестик по центру */
         #crosshair {
             position: absolute;
             top: 50%;
@@ -55,7 +54,6 @@
             height: 2px;
             transform: translateY(-50%);
         }
-        /* Джойстик */
         #joystick-container {
             position: absolute;
             bottom: 30px;
@@ -81,7 +79,6 @@
             box-shadow: 0 0 15px rgba(0,0,0,0.3);
             pointer-events: none;
         }
-        /* Кнопка установки блока */
         #place-btn {
             position: absolute;
             bottom: 40px;
@@ -108,7 +105,6 @@
             transform: scale(0.9);
             background: rgba(255, 200, 0, 0.9);
         }
-        /* Десктопная подсказка */
         #desktop-hint {
             position: absolute;
             bottom: 20px;
@@ -131,17 +127,14 @@
     <div id="info">Бродилка3000 | Блоков: <span id="blockCount">0</span></div>
     <div id="crosshair"></div>
     
-    <!-- Джойстик -->
     <div id="joystick-container">
         <div id="joystick-knob"></div>
     </div>
     
-    <!-- Кнопка блока -->
     <div id="place-btn">БЛОК</div>
     
-    <div id="desktop-hint">WASD - движение | Мышь - поворот | ЛКМ или ПРОБЕЛ - блок</div>
+    <div id="desktop-hint">WASD - движение | Мышь (зажми) - поворот | ЛКМ/ПРОБЕЛ - блок</div>
 
-    <!-- Подключаем Three.js -->
     <script type="importmap">
         {
             "imports": {
@@ -153,13 +146,12 @@
     <script type="module">
         import * as THREE from 'three';
 
-        // --- Инициализация сцены ---
+        // --- Сцена ---
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87CEEB); // Дневное небо
+        scene.background = new THREE.Color(0x87CEEB);
         scene.fog = new THREE.Fog(0x87CEEB, 30, 100);
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 2, 0); // Временная позиция, будет обновлена
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -167,12 +159,9 @@
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
 
-        // --- Освещение (дневное) ---
-        // Ambient
-        const ambientLight = new THREE.AmbientLight(0x404060);
-        scene.add(ambientLight);
+        // --- Освещение ---
+        scene.add(new THREE.AmbientLight(0x404060));
 
-        // Солнце
         const sunLight = new THREE.DirectionalLight(0xfff5d1, 1.2);
         sunLight.position.set(30, 40, 20);
         sunLight.castShadow = true;
@@ -188,36 +177,27 @@
         sunLight.shadow.camera.far = 100;
         scene.add(sunLight);
 
-        // Небольшой заполняющий свет
-        const fillLight = new THREE.PointLight(0xccddff, 0.5);
-        fillLight.position.set(-10, 20, 10);
-        scene.add(fillLight);
-
-        // --- Земля (асфальт/газон) ---
+        // --- Земля ---
         const groundGeometry = new THREE.PlaneGeometry(200, 200);
-        const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x3a6b3a, roughness: 0.8, metalness: 0.1 });
+        const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x3a6b3a, roughness: 0.8 });
         const ground = new THREE.Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
-        ground.position.y = -0.01;
         ground.receiveShadow = true;
         scene.add(ground);
 
-        // Добавим немного "тротуарной" текстуры через сетку
         const gridHelper = new THREE.GridHelper(200, 50, 0x888888, 0x444444);
-        gridHelper.position.y = 0;
         scene.add(gridHelper);
 
-        // --- Создание простого города (дома) ---
+        // --- Здания ---
         function createBuilding(x, z, width, depth, height, color) {
             const geometry = new THREE.BoxGeometry(width, height, depth);
-            const material = new THREE.MeshStandardMaterial({ color: color, roughness: 0.4, metalness: 0.1 });
+            const material = new THREE.MeshStandardMaterial({ color: color, roughness: 0.4 });
             const building = new THREE.Mesh(geometry, material);
             building.position.set(x, height / 2, z);
             building.castShadow = true;
             building.receiveShadow = true;
             scene.add(building);
 
-            // Окна (небольшие кубики)
             const windowMat = new THREE.MeshStandardMaterial({ color: 0xffffaa, emissive: 0x442200 });
             const cols = Math.floor(width / 1.5);
             const rows = Math.floor(height / 1.5);
@@ -225,24 +205,18 @@
                 for (let j = 0; j < rows; j++) {
                     if (Math.random() > 0.4) {
                         const win = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.1), windowMat);
-                        // Располагаем окна на передней стороне (z+)
                         win.position.set(
                             x - width/2 + 0.8 + i * 1.5,
                             0.8 + j * 1.5,
                             z + depth/2 + 0.05
                         );
-                        win.castShadow = false;
-                        win.receiveShadow = false;
                         scene.add(win);
                     }
                 }
             }
         }
 
-        // Расставляем здания по периметру и в центре
         const buildingColors = [0x8B4513, 0xA0522D, 0xCD853F, 0x6B8E23, 0x4682B4, 0x5F9EA0, 0xB8860B, 0x8FBC8F];
-        // Центральная площадь - оставим свободной для игры
-        // Здания вокруг
         const positions = [
             [-15, -15], [15, -15], [-15, 15], [15, 15],
             [-25, 0], [25, 0], [0, -25], [0, 25],
@@ -257,96 +231,62 @@
             createBuilding(x, z, w, d, h, color);
         });
 
-        // Добавим несколько деревьев для красоты
-        function createTree(x, z) {
-            const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
-            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 2), trunkMat);
-            trunk.position.set(x, 1, z);
-            trunk.castShadow = true;
-            trunk.receiveShadow = true;
-            scene.add(trunk);
-
-            const leafMat = new THREE.MeshStandardMaterial({ color: 0x2E8B57 });
-            const leaf1 = new THREE.Mesh(new THREE.SphereGeometry(1.2), leafMat);
-            leaf1.position.set(x, 2.5, z);
-            leaf1.castShadow = true;
-            leaf1.receiveShadow = true;
-            scene.add(leaf1);
-            const leaf2 = new THREE.Mesh(new THREE.SphereGeometry(0.9), leafMat);
-            leaf2.position.set(x + 0.6, 3.2, z - 0.5);
-            leaf2.castShadow = true;
-            leaf2.receiveShadow = true;
-            scene.add(leaf2);
-        }
-        // Деревья по краям
-        for (let i = 0; i < 20; i++) {
-            const angle = (i / 20) * Math.PI * 2;
-            const radius = 28 + Math.random() * 10;
-            const x = Math.cos(angle) * radius;
-            const z = Math.sin(angle) * radius;
-            createTree(x, z);
-        }
-
         // --- Игрок ---
         const player = {
             height: 1.7,
             speed: 5.0,
             position: new THREE.Vector3(0, 0, 0),
-            rotation: { x: 0, y: 0 } // x - наклон (не используется), y - поворот
+            rotation: { x: 0, y: 0 }
         };
-        // Установим камеру на позицию игрока
-        camera.position.set(0, player.height, 0);
 
-        // --- Управление ---
-        const keys = {
-            w: false, a: false, s: false, d: false, space: false
-        };
-        
-        // Джойстик
+        // --- Управление клавиатурой ---
+        const keys = { w: false, a: false, s: false, d: false, space: false };
+
+        // --- Джойстик (правильное направление) ---
         const joystick = {
             active: false,
-            deltaX: 0,
-            deltaY: 0,
+            moveX: 0,   // -1..1 (вправо = +1)
+            moveY: 0,   // -1..1 (вперёд = +1)
             touchId: null,
             centerX: 0,
             centerY: 0,
-            maxDist: 50 // радиус отклонения
+            maxDist: 50
         };
 
         const joystickContainer = document.getElementById('joystick-container');
         const joystickKnob = document.getElementById('joystick-knob');
-        
-        // Обновление положения кноба
+
         function updateJoystickKnob(dx, dy) {
             const dist = Math.min(Math.sqrt(dx*dx + dy*dy), joystick.maxDist);
             const angle = Math.atan2(dy, dx);
             const knobX = Math.cos(angle) * dist;
             const knobY = Math.sin(angle) * dist;
             joystickKnob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
-            // Нормализуем значения для движения
-            joystick.deltaX = knobX / joystick.maxDist;
-            joystick.deltaY = knobY / joystick.maxDist;
+            
+            // ВАЖНО: правильное направление!
+            // dx > 0 — вправо, dx < 0 — влево
+            // dy < 0 — вверх (вперёд), dy > 0 — вниз (назад)
+            joystick.moveX = knobX / joystick.maxDist;    // -1..1
+            joystick.moveY = -knobY / joystick.maxDist;   // инвертируем Y: вверх = +1 (вперёд)
         }
 
-        // Сброс джойстика
         function resetJoystick() {
             joystick.active = false;
-            joystick.deltaX = 0;
-            joystick.deltaY = 0;
+            joystick.moveX = 0;
+            joystick.moveY = 0;
             joystick.touchId = null;
             joystickKnob.style.transform = 'translate(-50%, -50%)';
         }
 
-        // Обработчики для джойстика
         joystickContainer.addEventListener('touchstart', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             const touch = e.changedTouches[0];
             joystick.active = true;
             joystick.touchId = touch.identifier;
             const rect = joystickContainer.getBoundingClientRect();
             joystick.centerX = rect.left + rect.width / 2;
             joystick.centerY = rect.top + rect.height / 2;
-            
             const dx = touch.clientX - joystick.centerX;
             const dy = touch.clientY - joystick.centerY;
             updateJoystickKnob(dx, dy);
@@ -354,16 +294,13 @@
 
         joystickContainer.addEventListener('touchmove', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             if (!joystick.active) return;
             let touch = null;
             for (let t of e.changedTouches) {
-                if (t.identifier === joystick.touchId) {
-                    touch = t;
-                    break;
-                }
+                if (t.identifier === joystick.touchId) { touch = t; break; }
             }
             if (!touch) return;
-            
             const dx = touch.clientX - joystick.centerX;
             const dy = touch.clientY - joystick.centerY;
             updateJoystickKnob(dx, dy);
@@ -371,36 +308,78 @@
 
         const endJoystick = (e) => {
             e.preventDefault();
-            if (joystick.active) {
-                resetJoystick();
-            }
+            e.stopPropagation();
+            if (joystick.active) resetJoystick();
         };
         joystickContainer.addEventListener('touchend', endJoystick);
         joystickContainer.addEventListener('touchcancel', endJoystick);
 
-        // Для мыши (десктоп) - джойстик не работает, но обрабатываем клики по кнопке
-        // Но также добавим управление мышью для поворота камеры
+        // --- Поворот камеры пальцем на телефоне ---
+        // Свайп по экрану (кроме элементов управления) вращает обзор
+        let lookTouchId = null;
+        let lookLastX = 0;
+        let lookLastY = 0;
+
+        renderer.domElement.addEventListener('touchstart', (e) => {
+            // Игнорируем касания по UI
+            if (e.target.closest('#joystick-container') || e.target.closest('#place-btn')) return;
+            
+            // Берём первый палец, который не занят джойстиком
+            for (let touch of e.changedTouches) {
+                if (touch.identifier !== joystick.touchId && lookTouchId === null) {
+                    lookTouchId = touch.identifier;
+                    lookLastX = touch.clientX;
+                    lookLastY = touch.clientY;
+                    break;
+                }
+            }
+        }, { passive: false });
+
+        renderer.domElement.addEventListener('touchmove', (e) => {
+            if (lookTouchId === null) return;
+            for (let touch of e.changedTouches) {
+                if (touch.identifier === lookTouchId) {
+                    const dx = touch.clientX - lookLastX;
+                    const dy = touch.clientY - lookLastY;
+                    player.rotation.y -= dx * 0.005;
+                    player.rotation.x -= dy * 0.005;
+                    player.rotation.x = Math.max(-Math.PI/2.5, Math.min(Math.PI/2.5, player.rotation.x));
+                    lookLastX = touch.clientX;
+                    lookLastY = touch.clientY;
+                    e.preventDefault();
+                    break;
+                }
+            }
+        }, { passive: false });
+
+        const endLook = (e) => {
+            for (let touch of e.changedTouches) {
+                if (touch.identifier === lookTouchId) {
+                    lookTouchId = null;
+                    break;
+                }
+            }
+        };
+        renderer.domElement.addEventListener('touchend', endLook);
+        renderer.domElement.addEventListener('touchcancel', endLook);
+
+        // --- Поворот камеры мышью на ПК ---
         let mousePressed = false;
         let mouseX = 0, mouseY = 0;
-        
+
         renderer.domElement.addEventListener('mousedown', (e) => {
-            if (e.button === 0) { // Левая кнопка
-                // Проверим, не на кнопке ли клик
-                const placeBtn = document.getElementById('place-btn');
-                const rect = placeBtn.getBoundingClientRect();
-                if (e.clientX >= rect.left && e.clientX <= rect.right && 
-                    e.clientY >= rect.top && e.clientY <= rect.bottom) {
-                    return; // Кнопка обработает сама
-                }
-                mousePressed = true;
-                mouseX = e.clientX;
-                mouseY = e.clientY;
-            }
+            if (e.button !== 0) return;
+            const placeBtn = document.getElementById('place-btn');
+            const rect = placeBtn.getBoundingClientRect();
+            if (e.clientX >= rect.left && e.clientX <= rect.right && 
+                e.clientY >= rect.top && e.clientY <= rect.bottom) return;
+            
+            mousePressed = true;
+            mouseX = e.clientX;
+            mouseY = e.clientY;
         });
 
-        window.addEventListener('mouseup', () => {
-            mousePressed = false;
-        });
+        window.addEventListener('mouseup', () => { mousePressed = false; });
 
         window.addEventListener('mousemove', (e) => {
             if (!mousePressed) return;
@@ -408,13 +387,12 @@
             const dy = e.clientY - mouseY;
             player.rotation.y -= dx * 0.005;
             player.rotation.x -= dy * 0.005;
-            // Ограничим наклон
             player.rotation.x = Math.max(-Math.PI/2.5, Math.min(Math.PI/2.5, player.rotation.x));
             mouseX = e.clientX;
             mouseY = e.clientY;
         });
 
-        // Клавиатура
+        // --- Клавиатура ---
         window.addEventListener('keydown', (e) => {
             const key = e.key.toLowerCase();
             if (key === 'w' || key === 'ц') keys.w = true;
@@ -423,10 +401,7 @@
             if (key === 'd' || key === 'в') keys.d = true;
             if (key === ' ') {
                 e.preventDefault();
-                if (!keys.space) {
-                    keys.space = true;
-                    placeBlock();
-                }
+                if (!keys.space) { keys.space = true; placeBlock(); }
             }
         });
 
@@ -439,77 +414,66 @@
             if (key === ' ') keys.space = false;
         });
 
-        // --- Управление блоками ---
-        const blocks = []; // массив для хранения блоков (для подсчёта)
+        // --- Блоки ---
+        const blocks = [];
         const blockGeometry = new THREE.BoxGeometry(1, 1, 1);
         const blockMaterial = new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0x442200 });
-        
-        // Raycaster для определения точки установки
+
         const raycaster = new THREE.Raycaster();
-        const centerScreen = new THREE.Vector2(0, 0); // центр экрана
+        const centerScreen = new THREE.Vector2(0, 0);
 
         function placeBlock() {
-            // Направление взгляда из центра экрана
             raycaster.setFromCamera(centerScreen, camera);
             
-            // Проверяем пересечение с землёй и зданиями (всеми объектами, кроме игрока и уже поставленных блоков? 
-            // Но мы хотим ставить блоки на любую поверхность, включая существующие блоки)
             const objectsToIntersect = [ground, ...scene.children.filter(child => 
-                child.isMesh && child !== ground && !blocks.includes(child) && child !== player.mesh
+                child.isMesh && child !== ground && !blocks.includes(child)
             )];
             
             const intersects = raycaster.intersectObjects(objectsToIntersect, true);
+            if (intersects.length === 0) return;
             
-            if (intersects.length > 0) {
-                const hit = intersects[0];
-                const point = hit.point;
-                const normal = hit.face.normal.clone();
-                // Преобразуем нормаль в мировые координаты
-                normal.transformDirection(hit.object.matrixWorld);
-                
-                // Позиция для нового блока: точка + нормаль (смещение на половину размера блока)
-                const blockPos = point.clone().add(normal.multiplyScalar(0.5));
-                
-                // Округляем до целых чисел, чтобы блоки стояли ровно
-                const gridPos = new THREE.Vector3(
-                    Math.round(blockPos.x),
-                    Math.round(blockPos.y),
-                    Math.round(blockPos.z)
-                );
-                
-                // Проверяем, не слишком ли высоко/низко
-                if (gridPos.y < 0.5 || gridPos.y > 20) return;
-                
-                // Проверяем, нет ли уже блока в этой позиции
-                const exists = blocks.some(b => b.position.distanceTo(gridPos) < 0.1);
-                if (exists) return;
-                
-                // Создаём блок
-                const block = new THREE.Mesh(blockGeometry, blockMaterial.clone());
-                block.position.copy(gridPos);
-                block.castShadow = true;
-                block.receiveShadow = true;
-                scene.add(block);
-                blocks.push(block);
-                
-                // Обновляем счётчик
-                document.getElementById('blockCount').textContent = blocks.length;
-            }
+            const hit = intersects[0];
+            const point = hit.point;
+            const normal = hit.face.normal.clone();
+            normal.transformDirection(hit.object.matrixWorld);
+            
+            const blockPos = point.clone().add(normal.multiplyScalar(0.5));
+            
+            const gridPos = new THREE.Vector3(
+                Math.round(blockPos.x),
+                Math.round(blockPos.y),
+                Math.round(blockPos.z)
+            );
+            
+            if (gridPos.y < 0.5 || gridPos.y > 20) return;
+            
+            const exists = blocks.some(b => b.position.distanceTo(gridPos) < 0.1);
+            if (exists) return;
+            
+            const block = new THREE.Mesh(blockGeometry, blockMaterial.clone());
+            block.position.copy(gridPos);
+            block.castShadow = true;
+            block.receiveShadow = true;
+            scene.add(block);
+            blocks.push(block);
+            
+            document.getElementById('blockCount').textContent = blocks.length;
         }
 
-        // Обработчик кнопки установки блока
         const placeBtn = document.getElementById('place-btn');
         placeBtn.addEventListener('touchstart', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             placeBlock();
         }, { passive: false });
         
         placeBtn.addEventListener('mousedown', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             placeBlock();
         });
 
-        // --- Обновление размера окна ---
+        // --- Размер окна ---
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
@@ -523,78 +487,69 @@
             requestAnimationFrame(animate);
             
             const now = performance.now();
-            const dt = Math.min((now - lastTime) / 1000, 0.1); // ограничим dt
+            const dt = Math.min((now - lastTime) / 1000, 0.1);
             lastTime = now;
 
-            // Движение игрока
-            let moveX = 0, moveZ = 0;
+            // Ввод: клавиатура + джойстик
+            let inputX = 0;  // -1..1 вправо/влево
+            let inputZ = 0;  // -1..1 вперёд/назад
             
-            // Клавиатура
-            if (keys.w) moveZ += 1;
-            if (keys.s) moveZ -= 1;
-            if (keys.a) moveX -= 1;
-            if (keys.d) moveX += 1;
+            if (keys.w) inputZ += 1;
+            if (keys.s) inputZ -= 1;
+            if (keys.d) inputX += 1;
+            if (keys.a) inputX -= 1;
             
-            // Джойстик (если активен)
+            // Джойстик: moveX (-1 влево, +1 вправо), moveY (-1 назад, +1 вперёд)
             if (joystick.active) {
-                moveX += joystick.deltaX;
-                moveZ -= joystick.deltaY; // Инвертируем, потому что вверх джойстика = вперёд
+                inputX += joystick.moveX;
+                inputZ += joystick.moveY;
             }
             
-            // Нормализация
-            if (moveX !== 0 || moveZ !== 0) {
-                const length = Math.sqrt(moveX*moveX + moveZ*moveZ);
-                moveX /= length;
-                moveZ /= length;
+            // Ограничение длины вектора
+            const len = Math.sqrt(inputX*inputX + inputZ*inputZ);
+            if (len > 1) {
+                inputX /= len;
+                inputZ /= len;
             }
             
-            // Применяем движение относительно поворота игрока
+            // Движение относительно направления взгляда игрока (по горизонтали)
             const speed = player.speed * dt;
-            const forward = new THREE.Vector3(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
-            const right = new THREE.Vector3(Math.cos(player.rotation.y), 0, -Math.sin(player.rotation.y));
+            const forwardX = Math.sin(player.rotation.y);
+            const forwardZ = Math.cos(player.rotation.y);
+            const rightX = Math.cos(player.rotation.y);
+            const rightZ = -Math.sin(player.rotation.y);
             
-            const moveVec = new THREE.Vector3()
-                .addScaledVector(forward, moveZ * speed)
-                .addScaledVector(right, moveX * speed);
+            const moveVec = new THREE.Vector3(
+                (forwardX * inputZ + rightX * inputX) * speed,
+                0,
+                (forwardZ * inputZ + rightZ * inputX) * speed
+            );
             
-            // Проверка коллизий с блоками (простая, по расстоянию)
             const newPos = player.position.clone().add(moveVec);
             
-            // Проверяем столкновения с блоками
+            // Коллизии с блоками
             let collision = false;
             for (let block of blocks) {
-                const blockPos = block.position;
-                const dx = Math.abs(newPos.x - blockPos.x);
-                const dz = Math.abs(newPos.z - blockPos.z);
-                const dy = Math.abs((newPos.y + player.height/2) - blockPos.y); // приблизительно
+                const bp = block.position;
+                const dx = Math.abs(newPos.x - bp.x);
+                const dz = Math.abs(newPos.z - bp.z);
+                const dy = Math.abs((newPos.y + player.height / 2) - bp.y);
                 if (dx < 0.8 && dz < 0.8 && dy < 1.2) {
                     collision = true;
                     break;
                 }
             }
             
-            // Также проверим столкновение со зданиями (упрощённо, по расстоянию до центра зданий)
-            // Но у нас здания разные, лучше проверять по bounding box, но для простоты используем дистанцию
-            // Для демо достаточно, чтобы игрок не проходил сквозь блоки, здания можно обходить
-            // (здания не являются блоками, они декорации, но игрок может сквозь них проходить? Лучше запретить)
-            // Добавим проверку для зданий: получим все меши зданий, но мы их не сохраняли. 
-            // Упростим: проверим расстояние до центров зданий? Это неточно, но для демо сойдёт.
-            // Вместо этого сделаем простую проверку на пересечение с AABB для зданий? 
-            // Это усложнит. Оставим только блоки, чтобы игрок мог свободно ходить по городу, 
-            // а блоки служили препятствиями.
-            
             if (!collision) {
                 player.position.copy(newPos);
             }
             
-            // Ограничим игрока в пределах карты
+            // Ограничение карты
             player.position.x = Math.max(-45, Math.min(45, player.position.x));
             player.position.z = Math.max(-45, Math.min(45, player.position.z));
             
-            // Обновляем камеру
+            // Камера
             camera.position.set(player.position.x, player.height, player.position.z);
-            
-            // Поворот камеры
             camera.rotation.order = 'YXZ';
             camera.rotation.y = player.rotation.y;
             camera.rotation.x = player.rotation.x;
@@ -602,28 +557,10 @@
             renderer.render(scene, camera);
         }
 
-        // Запуск
-        // Установим начальный поворот игрока
         player.rotation.y = 0;
         player.rotation.x = 0;
         
         animate();
-
-        // Добавим немного блоков для примера? Нет, пусть игрок сам ставит.
-        // Но для демонстрации механики можно добавить пару блоков в начале.
-        // Раскомментируйте, если хотите:
-        /*
-        setTimeout(() => {
-            // Пример: создать блок перед игроком
-            const block = new THREE.Mesh(blockGeometry, blockMaterial.clone());
-            block.position.set(0, 0.5, -2);
-            block.castShadow = true;
-            block.receiveShadow = true;
-            scene.add(block);
-            blocks.push(block);
-            document.getElementById('blockCount').textContent = blocks.length;
-        }, 1000);
-        */
     </script>
 </body>
-  </html>
+    </html>
