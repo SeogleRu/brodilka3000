@@ -27,49 +27,37 @@
     font-size: 14px; z-index: 10; pointer-events: none;
   }
 
-  /* ============ ДЖОЙСТИК ============ */
   #joy {
-    position: fixed;
-    left: 20px; bottom: 20px;
+    position: fixed; left: 20px; bottom: 20px;
     width: 150px; height: 150px;
     border-radius: 50%;
     background: rgba(255,255,255,0.12);
     border: 2px solid rgba(255,255,255,0.35);
-    z-index: 40;
-    touch-action: none;
+    z-index: 40; touch-action: none;
     box-shadow: 0 0 20px rgba(0,0,0,0.3) inset;
   }
   #joyKnob {
-    position: absolute;
-    left: 50%; top: 50%;
+    position: absolute; left: 50%; top: 50%;
     width: 70px; height: 70px;
     margin-left: -35px; margin-top: -35px;
     border-radius: 50%;
     background: radial-gradient(circle at 30% 30%, #ffffff, #b8b8b8);
     border: 2px solid rgba(255,255,255,0.9);
     box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    pointer-events: none;
-    will-change: transform;
+    pointer-events: none; will-change: transform;
   }
 
-  /* ============ КНОПКА БЛОКА ============ */
   #placeBtn {
-    position: fixed;
-    right: 25px; bottom: 30px;
+    position: fixed; right: 25px; bottom: 30px;
     width: 100px; height: 100px;
     border-radius: 50%;
     background: radial-gradient(circle at 35% 35%, #ffbb33, #d97706);
     border: 3px solid #fff;
-    color: #fff;
-    font-size: 16px;
-    font-weight: bold;
+    color: #fff; font-size: 16px; font-weight: bold;
     text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 6px 20px rgba(0,0,0,0.5);
-    z-index: 40;
-    touch-action: none;
-    cursor: pointer;
-    user-select: none;
+    z-index: 40; touch-action: none; cursor: pointer; user-select: none;
   }
   #placeBtn.pressed { transform: scale(0.92); background: radial-gradient(circle at 35% 35%, #ffcc55, #f59e0b); }
 
@@ -247,20 +235,14 @@ addEventListener('keyup', (e) => {
   if (k === 'd' || k === 'в' || k === 'arrowright') keys.d = false;
 });
 
-/* ============================ ДЖОЙСТИК (ПЕРЕДЕЛАН С НУЛЯ) ============================ */
+/* ============================ ДЖОЙСТИК ============================ */
 const joyEl = document.getElementById('joy');
 const joyKnob = document.getElementById('joyKnob');
 const JOY_RADIUS = 55;
 
-// Здесь храним итоговое направление для игрового цикла
-const joy = {
-  active: false,
-  touchId: null,
-  mx: 0,  // -1 влево ... +1 вправо (стрейф)
-  my: 0   // -1 назад ... +1 вперёд
-};
+// Итоговый вектор: mx ∈ [-1..1] (вправо +), my ∈ [-1..1] (вперёд +)
+const joy = { active: false, touchId: null, mx: 0, my: 0 };
 
-// Пересчёт положения кноба и вектора направления
 function joyMove(clientX, clientY) {
   const r = joyEl.getBoundingClientRect();
   const cx = r.left + r.width / 2;
@@ -277,9 +259,9 @@ function joyMove(clientX, clientY) {
 
   joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
 
-  // dx>0 → вправо → mx>0
+  // Вправо тянем → dx>0 → mx>0 → вправо
   joy.mx = dx / JOY_RADIUS;
-  // dy<0 (палец вверху) → вперёд → my>0
+  // Вверх тянем → dy<0 → my>0 → вперёд
   joy.my = -dy / JOY_RADIUS;
 }
 
@@ -292,17 +274,14 @@ function joyStop() {
 }
 
 joyEl.addEventListener('touchstart', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
+  e.preventDefault(); e.stopPropagation();
   const t = e.changedTouches[0];
-  joy.active = true;
-  joy.touchId = t.identifier;
+  joy.active = true; joy.touchId = t.identifier;
   joyMove(t.clientX, t.clientY);
 }, { passive: false });
 
 joyEl.addEventListener('touchmove', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
+  e.preventDefault(); e.stopPropagation();
   if (!joy.active) return;
   for (const t of e.changedTouches) {
     if (t.identifier === joy.touchId) {
@@ -313,18 +292,15 @@ joyEl.addEventListener('touchmove', (e) => {
 }, { passive: false });
 
 const joyEnd = (e) => {
-  e.preventDefault();
-  e.stopPropagation();
+  e.preventDefault(); e.stopPropagation();
   if (joy.active) joyStop();
 };
 joyEl.addEventListener('touchend', joyEnd);
 joyEl.addEventListener('touchcancel', joyEnd);
 
-// Отладка мышью (на ПК джойстик скрыт, но пусть будет)
 joyEl.addEventListener('mousedown', (e) => {
   e.preventDefault();
-  joy.active = true;
-  joy.touchId = 'mouse';
+  joy.active = true; joy.touchId = 'mouse';
   joyMove(e.clientX, e.clientY);
 });
 addEventListener('mousemove', (e) => {
@@ -342,8 +318,7 @@ renderer.domElement.addEventListener('touchstart', (e) => {
   for (const t of e.changedTouches) {
     if (t.identifier !== joy.touchId && lookId === null) {
       lookId = t.identifier;
-      lookX = t.clientX;
-      lookY = t.clientY;
+      lookX = t.clientX; lookY = t.clientY;
       break;
     }
   }
@@ -358,8 +333,7 @@ renderer.domElement.addEventListener('touchmove', (e) => {
       player.yaw   -= dx * 0.005;
       player.pitch -= dy * 0.005;
       player.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, player.pitch));
-      lookX = t.clientX;
-      lookY = t.clientY;
+      lookX = t.clientX; lookY = t.clientY;
       e.preventDefault();
       break;
     }
@@ -378,9 +352,7 @@ renderer.domElement.addEventListener('touchcancel', lookEnd);
 let mouseHeld = false, mx = 0, my = 0;
 renderer.domElement.addEventListener('mousedown', (e) => {
   if (e.button !== 0) return;
-  mouseHeld = true;
-  mx = e.clientX;
-  my = e.clientY;
+  mouseHeld = true; mx = e.clientX; my = e.clientY;
 });
 addEventListener('mouseup', () => mouseHeld = false);
 addEventListener('mousemove', (e) => {
@@ -389,8 +361,7 @@ addEventListener('mousemove', (e) => {
   player.yaw   -= dx * 0.004;
   player.pitch -= dy * 0.004;
   player.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, player.pitch));
-  mx = e.clientX;
-  my = e.clientY;
+  mx = e.clientX; my = e.clientY;
 });
 
 /* ============================ БЛОКИ ============================ */
@@ -402,21 +373,27 @@ const centerNDC = new THREE.Vector2(0, 0);
 
 function placeBlock() {
   raycaster.setFromCamera(centerNDC, camera);
-  const targets = [ground, ...scene.children.filter(c =>
-    c.isMesh && c !== ground && !blocks.includes(c) && c !== grid
-  )];
+
+  // Целимся в: земля + все меши (здания, окна, деревья, уже поставленные блоки)
+  const targets = [ground];
+  scene.traverse(obj => {
+    if (obj.isMesh && obj !== ground && !targets.includes(obj)) targets.push(obj);
+  });
+
   const hits = raycaster.intersectObjects(targets, true);
   if (!hits.length) return;
 
   const h = hits[0];
   const nrm = h.face.normal.clone().transformDirection(h.object.matrixWorld);
-  const p = h.point.clone().add(nrm.multiplyScalar(0.5));
+
+  // Ставим блок впритык к поверхности, к которой прицелились
+  const p = h.point.clone().add(nrm.clone().multiplyScalar(0.5));
 
   const gx = Math.round(p.x);
   const gy = Math.round(p.y);
   const gz = Math.round(p.z);
 
-  if (gy < 0.5 || gy > 30) return;
+  if (gy < 1 || gy > 40) return;
   if (blocks.some(b => b.position.x === gx && b.position.y === gy && b.position.z === gz)) return;
 
   const b = new THREE.Mesh(blockGeo, blockMat);
@@ -431,14 +408,12 @@ function placeBlock() {
 /* ============================ КНОПКА БЛОКА ============================ */
 const placeBtn = document.getElementById('placeBtn');
 placeBtn.addEventListener('touchstart', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
+  e.preventDefault(); e.stopPropagation();
   placeBtn.classList.add('pressed');
   placeBlock();
 }, { passive: false });
 placeBtn.addEventListener('touchend', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
+  e.preventDefault(); e.stopPropagation();
   placeBtn.classList.remove('pressed');
 }, { passive: false });
 placeBtn.addEventListener('mousedown', (e) => {
@@ -474,8 +449,8 @@ function loop() {
   const dt = Math.min((now - lastT) / 1000, 0.05);
   lastT = now;
 
-  // --- Ввод: -1..+1 ---
-  let inX = 0; // +1 вправо, -1 влево (стрейф)
+  // Ввод -1..+1
+  let inX = 0; // +1 вправо, -1 влево
   let inY = 0; // +1 вперёд, -1 назад
 
   if (keys.w) inY += 1;
@@ -491,7 +466,7 @@ function loop() {
   const mag = Math.hypot(inX, inY);
   if (mag > 1) { inX /= mag; inY /= mag; }
 
-  // --- Движение относительно направления взгляда ---
+  // Движение относительно взгляда камеры
   const sinY = Math.sin(player.yaw);
   const cosY = Math.cos(player.yaw);
 
@@ -499,7 +474,6 @@ function loop() {
   const dx = (sinY * inY + cosY * inX) * player.speed * dt;
   const dz = (cosY * inY - sinY * inX) * player.speed * dt;
 
-  // --- Коллизии по осям отдельно ---
   const newX = player.pos.x + dx;
   const newZ = player.pos.z + dz;
 
@@ -509,7 +483,7 @@ function loop() {
   player.pos.x = Math.max(-140, Math.min(140, player.pos.x));
   player.pos.z = Math.max(-140, Math.min(140, player.pos.z));
 
-  // --- Камера ---
+  // Камера
   camera.position.set(player.pos.x, player.height, player.pos.z);
   camera.rotation.order = 'YXZ';
   camera.rotation.y = player.yaw;
@@ -526,4 +500,4 @@ function loop() {
 loop();
 </script>
 </body>
-</html>
+ </html>
