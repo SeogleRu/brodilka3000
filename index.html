@@ -150,13 +150,11 @@ for (let ring = 1; ring <= 3; ring++) {
 }
 spots.forEach(([x, z]) => {
   if (Math.hypot(x, z) < 8) return;
-  makeBuilding(
-    x, z,
+  makeBuilding(x, z,
     3 + Math.random() * 4,
     4 + Math.random() * 9,
     3 + Math.random() * 4,
-    palette[Math.floor(Math.random() * palette.length)]
-  );
+    palette[Math.floor(Math.random() * palette.length)]);
 });
 
 /* ============================ ИГРОК ============================ */
@@ -189,11 +187,11 @@ addEventListener('keyup', (e) => {
   if (k === 'd' || k === 'в' || k === 'arrowright') keys.d = false;
 });
 
-/* ============================ ДЖОЙСТИК ============================
-   ПРОСТО И ЯВНО:
-   forward  = +1 если тянем ВВЕРХ, -1 если ВНИЗ, 0 иначе
-   strafe   = +1 если тянем ВПРАВО, -1 если ВЛЕВО, 0 иначе
-   ================================================================= */
+/* ============================
+   ДЖОЙСТИК — МАКСИМАЛЬНО ПРОСТО:
+   moveX = сколько тянем вбок  (-1 влево, +1 вправо)
+   moveZ = сколько тянем вперёд (-1 назад, +1 вперёд)
+   ============================ */
 const joyEl = document.getElementById('joy');
 const joyKnob = document.getElementById('joyKnob');
 const JOY_RADIUS = 55;
@@ -201,8 +199,8 @@ const JOY_RADIUS = 55;
 const joy = {
   active: false,
   touchId: null,
-  forward: 0,   // -1..+1  вперёд/назад
-  strafe: 0     // -1..+1  вправо/влево
+  moveX: 0,   // вправо +, влево -
+  moveZ: 0    // вперёд +, назад -
 };
 
 function joyUpdate(clientX, clientY) {
@@ -221,20 +219,20 @@ function joyUpdate(clientX, clientY) {
 
   joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
 
-  // ВПРАВО = dx > 0 → strafe > 0
-  // ВЛЕВО  = dx < 0 → strafe < 0
-  joy.strafe = dx / JOY_RADIUS;
+  // ВПРАВО (dx>0) → moveX>0
+  // ВЛЕВО  (dx<0) → moveX<0
+  joy.moveX = dx / JOY_RADIUS;
 
-  // ВВЕРХ  = dy < 0 → forward > 0 (минус перед dy)
-  // ВНИЗ   = dy > 0 → forward < 0
-  joy.forward = -dy / JOY_RADIUS;
+  // ВВЕРХ (dy<0) → moveZ>0 (вперёд)
+  // ВНИЗ  (dy>0) → moveZ<0 (назад)
+  joy.moveZ = -dy / JOY_RADIUS;
 }
 
 function joyStop() {
   joy.active = false;
   joy.touchId = null;
-  joy.forward = 0;
-  joy.strafe = 0;
+  joy.moveX = 0;
+  joy.moveZ = 0;
   joyKnob.style.transform = 'translate(0px, 0px)';
 }
 
@@ -400,38 +398,34 @@ function loop() {
   const dt = Math.min((now - lastT) / 1000, 0.05);
   lastT = now;
 
-  // ============ ЯВНЫЙ ВВОД ============
-  // forward: +1 вперёд, -1 назад, 0 стоим
-  // strafe:  +1 вправо, -1 влево,  0 стоим
-  let forward = 0;
-  let strafe = 0;
+  // Ввод: -1..+1
+  // inputX: +1 вправо, -1 влево
+  // inputZ: +1 вперёд, -1 назад
+  let inputX = 0;
+  let inputZ = 0;
 
-  if (keys.w) forward += 1;
-  if (keys.s) forward -= 1;
-  if (keys.d) strafe  += 1;
-  if (keys.a) strafe  -= 1;
+  if (keys.w) inputZ += 1;
+  if (keys.s) inputZ -= 1;
+  if (keys.d) inputX += 1;
+  if (keys.a) inputX -= 1;
 
   if (joy.active) {
-    forward += joy.forward;
-    strafe  += joy.strafe;
+    inputX += joy.moveX;
+    inputZ += joy.moveZ;
   }
 
-  // Ограничим длину до 1, чтобы по диагонали не бегать быстрее
-  const mag = Math.hypot(forward, strafe);
-  if (mag > 1) { forward /= mag; strafe /= mag; }
+  const mag = Math.hypot(inputX, inputZ);
+  if (mag > 1) { inputX /= mag; inputZ /= mag; }
 
-  // ============ ПРЕОБРАЗОВАНИЕ В МИРОВЫЕ КООРДИНАТЫ ============
-  // Куда смотрит камера (по горизонтали): forward vector = (sin(yaw), cos(yaw))
-  // Вправо от камеры:                      right   vector = (cos(yaw), -sin(yaw))
-  const sinY = Math.sin(player.yaw);
-  const cosY = Math.cos(player.yaw);
+  // !!! ДВИЖЕНИЕ В МИРОВЫХ ОСЯХ — БЕЗ УЧЁТА ПОВОРОТА КАМЕРЫ !!!
+  // inputX (+1 вправо) → +X в мире
+  // inputZ (+1 вперёд) → -Z в мире (потому что в THREE "вперёд" от камеры это -Z)
+  const speed = player.speed * dt;
+  const moveX = inputX * speed;
+  const moveZ = -inputZ * speed;
 
-  const moveX_world = (sinY * forward + cosY * strafe) * player.speed * dt;
-  const moveZ_world = (cosY * forward - sinY * strafe) * player.speed * dt;
-
-  // ============ ДВИЖЕНИЕ + КОЛЛИЗИИ ============
-  const newX = player.pos.x + moveX_world;
-  const newZ = player.pos.z + moveZ_world;
+  const newX = player.pos.x + moveX;
+  const newZ = player.pos.z + moveZ;
 
   if (canMoveTo(newX, player.pos.z)) player.pos.x = newX;
   if (canMoveTo(player.pos.x, newZ)) player.pos.z = newZ;
@@ -439,7 +433,7 @@ function loop() {
   player.pos.x = Math.max(-140, Math.min(140, player.pos.x));
   player.pos.z = Math.max(-140, Math.min(140, player.pos.z));
 
-  // ============ КАМЕРА ============
+  // Камера
   camera.position.set(player.pos.x, player.height, player.pos.z);
   camera.rotation.order = 'YXZ';
   camera.rotation.y = player.yaw;
