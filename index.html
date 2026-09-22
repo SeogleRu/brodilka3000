@@ -73,7 +73,6 @@
   }
   #placeBtn.pressed { transform: scale(0.92); background: radial-gradient(circle at 35% 35%, #ffcc55, #f59e0b); }
 
-  /* ============ ПОДСКАЗКА НА ПК ============ */
   #hint {
     position: fixed; bottom: 15px; left: 50%; transform: translateX(-50%);
     color: rgba(255,255,255,0.75); background: rgba(0,0,0,0.5);
@@ -81,11 +80,7 @@
     z-index: 10; pointer-events: none; white-space: nowrap;
   }
   @media (pointer: coarse) { #hint { display: none; } }
-
-  /* Скрываем джойстик и кнопку на ПК */
-  @media (pointer: fine) {
-    #joy, #placeBtn { display: none; }
-  }
+  @media (pointer: fine) { #joy, #placeBtn { display: none; } }
 </style>
 </head>
 <body>
@@ -131,6 +126,7 @@ sun.shadow.camera.bottom = -60;
 sun.shadow.camera.near = 1;
 sun.shadow.camera.far = 150;
 scene.add(sun);
+scene.add(sun.target);
 
 /* ============================ ЗЕМЛЯ ============================ */
 const ground = new THREE.Mesh(
@@ -156,12 +152,10 @@ function makeBuilding(x, z, w, h, d, color) {
   b.castShadow = true;
   b.receiveShadow = true;
   scene.add(b);
-  // Окна на 4 сторонах
   const winMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, emissive: 0x224466, emissiveIntensity: 0.6 });
   const floors = Math.floor(h / 2);
   for (let f = 0; f < floors; f++) {
     const y = 1.2 + f * 2;
-    // передняя и задняя
     for (let i = -w/2 + 1; i < w/2 - 0.5; i += 1.5) {
       for (const zSide of [d/2 + 0.05, -d/2 - 0.05]) {
         const win = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 1), winMat);
@@ -170,7 +164,6 @@ function makeBuilding(x, z, w, h, d, color) {
         scene.add(win);
       }
     }
-    // боковые
     for (let i = -d/2 + 1; i < d/2 - 0.5; i += 1.5) {
       for (const xSide of [w/2 + 0.05, -w/2 - 0.05]) {
         const win = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 1), winMat);
@@ -203,7 +196,6 @@ spots.forEach(([x, z]) => {
   );
 });
 
-// Деревья
 for (let i = 0; i < 30; i++) {
   const a = Math.random() * Math.PI * 2;
   const r = 10 + Math.random() * 55;
@@ -236,7 +228,7 @@ const player = {
 };
 const PITCH_LIMIT = Math.PI / 2.2;
 
-/* ============================ ВВОД ============================ */
+/* ============================ КЛАВИАТУРА ============================ */
 const keys = { w: false, a: false, s: false, d: false };
 
 addEventListener('keydown', (e) => {
@@ -255,44 +247,47 @@ addEventListener('keyup', (e) => {
   if (k === 'd' || k === 'в' || k === 'arrowright') keys.d = false;
 });
 
-/* ============================ ДЖОЙСТИК (КАК В PUBG) ============================ */
+/* ============================ ДЖОЙСТИК (ПЕРЕДЕЛАН С НУЛЯ) ============================ */
 const joyEl = document.getElementById('joy');
 const joyKnob = document.getElementById('joyKnob');
-const JOY_MAX = 55; // px
+const JOY_RADIUS = 55;
 
-const joyState = {
+// Здесь храним итоговое направление для игрового цикла
+const joy = {
   active: false,
-  id: null,
-  startX: 0,
-  startY: 0,
-  moveX: 0,   // -1..1 (влево..вправо)
-  moveY: 0    // -1..1 (назад..вперёд)
+  touchId: null,
+  mx: 0,  // -1 влево ... +1 вправо (стрейф)
+  my: 0   // -1 назад ... +1 вперёд
 };
 
-function joyUpdate(clientX, clientY) {
-  const rect = joyEl.getBoundingClientRect();
-  const cx = rect.left + rect.width / 2;
-  const cy = rect.top + rect.height / 2;
+// Пересчёт положения кноба и вектора направления
+function joyMove(clientX, clientY) {
+  const r = joyEl.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  const cy = r.top + r.height / 2;
+
   let dx = clientX - cx;
   let dy = clientY - cy;
 
-  const dist = Math.hypot(dx, dy);
-  if (dist > JOY_MAX) {
-    dx = dx / dist * JOY_MAX;
-    dy = dy / dist * JOY_MAX;
+  const len = Math.hypot(dx, dy);
+  if (len > JOY_RADIUS) {
+    dx = dx / len * JOY_RADIUS;
+    dy = dy / len * JOY_RADIUS;
   }
+
   joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
 
-  // Нормализованные значения -1..1
-  joyState.moveX = dx / JOY_MAX;      // влево отриц., вправо плюс
-  joyState.moveY = -dy / JOY_MAX;     // вверх экрана = +1 (вперёд), вниз = -1 (назад)
+  // dx>0 → вправо → mx>0
+  joy.mx = dx / JOY_RADIUS;
+  // dy<0 (палец вверху) → вперёд → my>0
+  joy.my = -dy / JOY_RADIUS;
 }
 
-function joyReset() {
-  joyState.active = false;
-  joyState.id = null;
-  joyState.moveX = 0;
-  joyState.moveY = 0;
+function joyStop() {
+  joy.active = false;
+  joy.touchId = null;
+  joy.mx = 0;
+  joy.my = 0;
   joyKnob.style.transform = 'translate(0px, 0px)';
 }
 
@@ -300,19 +295,18 @@ joyEl.addEventListener('touchstart', (e) => {
   e.preventDefault();
   e.stopPropagation();
   const t = e.changedTouches[0];
-  joyState.active = true;
-  joyState.id = t.identifier;
-  // Сразу ставим кноб в точку касания (относительно центра)
-  joyUpdate(t.clientX, t.clientY);
+  joy.active = true;
+  joy.touchId = t.identifier;
+  joyMove(t.clientX, t.clientY);
 }, { passive: false });
 
 joyEl.addEventListener('touchmove', (e) => {
   e.preventDefault();
   e.stopPropagation();
-  if (!joyState.active) return;
+  if (!joy.active) return;
   for (const t of e.changedTouches) {
-    if (t.identifier === joyState.id) {
-      joyUpdate(t.clientX, t.clientY);
+    if (t.identifier === joy.touchId) {
+      joyMove(t.clientX, t.clientY);
       break;
     }
   }
@@ -321,22 +315,23 @@ joyEl.addEventListener('touchmove', (e) => {
 const joyEnd = (e) => {
   e.preventDefault();
   e.stopPropagation();
-  if (joyState.active) joyReset();
+  if (joy.active) joyStop();
 };
 joyEl.addEventListener('touchend', joyEnd);
 joyEl.addEventListener('touchcancel', joyEnd);
-// Поддержка мыши (для отладки на ПК — но на ПК скрыт)
+
+// Отладка мышью (на ПК джойстик скрыт, но пусть будет)
 joyEl.addEventListener('mousedown', (e) => {
   e.preventDefault();
-  joyState.active = true;
-  joyState.id = 'mouse';
-  joyUpdate(e.clientX, e.clientY);
+  joy.active = true;
+  joy.touchId = 'mouse';
+  joyMove(e.clientX, e.clientY);
 });
 addEventListener('mousemove', (e) => {
-  if (joyState.active && joyState.id === 'mouse') joyUpdate(e.clientX, e.clientY);
+  if (joy.active && joy.touchId === 'mouse') joyMove(e.clientX, e.clientY);
 });
 addEventListener('mouseup', () => {
-  if (joyState.id === 'mouse') joyReset();
+  if (joy.touchId === 'mouse') joyStop();
 });
 
 /* ============================ ПОВОРОТ КАМЕРЫ СВАЙПОМ ============================ */
@@ -345,7 +340,7 @@ let lookId = null, lookX = 0, lookY = 0;
 renderer.domElement.addEventListener('touchstart', (e) => {
   if (e.target.closest('#joy') || e.target.closest('#placeBtn')) return;
   for (const t of e.changedTouches) {
-    if (t.identifier !== joyState.id && lookId === null) {
+    if (t.identifier !== joy.touchId && lookId === null) {
       lookId = t.identifier;
       lookX = t.clientX;
       lookY = t.clientY;
@@ -360,7 +355,7 @@ renderer.domElement.addEventListener('touchmove', (e) => {
     if (t.identifier === lookId) {
       const dx = t.clientX - lookX;
       const dy = t.clientY - lookY;
-      player.yaw -= dx * 0.005;
+      player.yaw   -= dx * 0.005;
       player.pitch -= dy * 0.005;
       player.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, player.pitch));
       lookX = t.clientX;
@@ -391,7 +386,7 @@ addEventListener('mouseup', () => mouseHeld = false);
 addEventListener('mousemove', (e) => {
   if (!mouseHeld) return;
   const dx = e.clientX - mx, dy = e.clientY - my;
-  player.yaw -= dx * 0.004;
+  player.yaw   -= dx * 0.004;
   player.pitch -= dy * 0.004;
   player.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, player.pitch));
   mx = e.clientX;
@@ -460,9 +455,8 @@ addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 
-/* ============================ ДВИЖЕНИЕ + КОЛЛИЗИИ ============================ */
+/* ============================ КОЛЛИЗИИ ============================ */
 function canMoveTo(x, z) {
-  // Проверка блоков (AABB)
   for (const b of blocks) {
     const dx = Math.abs(x - b.position.x);
     const dz = Math.abs(z - b.position.z);
@@ -471,7 +465,7 @@ function canMoveTo(x, z) {
   return true;
 }
 
-/* ============================ ЦИКЛ ============================ */
+/* ============================ ИГРОВОЙ ЦИКЛ ============================ */
 let lastT = performance.now();
 
 function loop() {
@@ -480,41 +474,38 @@ function loop() {
   const dt = Math.min((now - lastT) / 1000, 0.05);
   lastT = now;
 
-  // --- Собираем ввод ---
-  let inX = 0; // -1 влево, +1 вправо (стрейф)
-  let inY = 0; // -1 назад, +1 вперёд
+  // --- Ввод: -1..+1 ---
+  let inX = 0; // +1 вправо, -1 влево (стрейф)
+  let inY = 0; // +1 вперёд, -1 назад
 
   if (keys.w) inY += 1;
   if (keys.s) inY -= 1;
   if (keys.d) inX += 1;
   if (keys.a) inX -= 1;
 
-  if (joyState.active) {
-    inX += joyState.moveX;
-    inY += joyState.moveY;
+  if (joy.active) {
+    inX += joy.mx;
+    inY += joy.my;
   }
 
-  // Ограничиваем длину вектора до 1
   const mag = Math.hypot(inX, inY);
   if (mag > 1) { inX /= mag; inY /= mag; }
 
-  // --- Движение относительно направления взгляда (yaw) ---
-  // forward = (sin(yaw), cos(yaw)) — направление "куда смотрит камера" по горизонтали
-  // right   = (cos(yaw), -sin(yaw)) — вектор вправо от камеры
+  // --- Движение относительно направления взгляда ---
   const sinY = Math.sin(player.yaw);
   const cosY = Math.cos(player.yaw);
 
+  // forward = (sin, cos), right = (cos, -sin)
   const dx = (sinY * inY + cosY * inX) * player.speed * dt;
   const dz = (cosY * inY - sinY * inX) * player.speed * dt;
 
-  // --- Коллизии по осям отдельно (скольжение вдоль стен) ---
+  // --- Коллизии по осям отдельно ---
   const newX = player.pos.x + dx;
   const newZ = player.pos.z + dz;
 
   if (canMoveTo(newX, player.pos.z)) player.pos.x = newX;
   if (canMoveTo(player.pos.x, newZ)) player.pos.z = newZ;
 
-  // Границы карты
   player.pos.x = Math.max(-140, Math.min(140, player.pos.x));
   player.pos.z = Math.max(-140, Math.min(140, player.pos.z));
 
@@ -524,7 +515,7 @@ function loop() {
   camera.rotation.y = player.yaw;
   camera.rotation.x = player.pitch;
 
-  // Солнце следует за игроком (чтобы тени всегда были вокруг)
+  // Солнце следует за игроком
   sun.position.set(player.pos.x + 40, 60, player.pos.z + 30);
   sun.target.position.set(player.pos.x, 0, player.pos.z);
   sun.target.updateMatrixWorld();
@@ -535,4 +526,4 @@ function loop() {
 loop();
 </script>
 </body>
-    </html>
+</html>
