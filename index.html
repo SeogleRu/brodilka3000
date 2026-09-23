@@ -220,7 +220,7 @@ function joyUpdate(clientX, clientY) {
   joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
 
   // ВВЕРХ (dy<0) → forward>0 → вперёд
-  joy.forward = -dy / JOY_RADIUS;
+  joy.forward = dy / JOY_RADIUS;
   // ВПРАВО (dx>0) → strafe>0 → вправо
   joy.strafe = dx / JOY_RADIUS;
 }
@@ -339,7 +339,7 @@ function placeBlock() {
   const gy = Math.round(p.y);
   const gz = Math.round(p.z);
 
-  if (gy < 1 || gy > 40) return;
+  if (gy < 0 || gy > 40) return;
   if (blocks.some(b => b.position.x === gx && b.position.y === gy && b.position.z === gz)) return;
 
   const b = new THREE.Mesh(blockGeo, blockMat);
