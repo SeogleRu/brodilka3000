@@ -188,11 +188,9 @@ addEventListener('keyup', (e) => {
 });
 
 /* ============================
-   ДЖОЙСТИК:
-   ВПРАВО → иду вправо
-   ВЛЕВО  → иду влево
-   ВВЕРХ  → иду назад
-   ВНИЗ   → иду вперёд
+   ДЖОЙСТИК
+   forward: +1 вверх (вперёд), -1 вниз (назад)
+   strafe:  +1 вправо, -1 влево
    ============================ */
 const joyEl = document.getElementById('joy');
 const joyKnob = document.getElementById('joyKnob');
@@ -201,8 +199,8 @@ const JOY_RADIUS = 55;
 const joy = {
   active: false,
   touchId: null,
-  moveX: 0,   // вправо +, влево -
-  moveZ: 0    // назад +, вперёд -  (после инверсии)
+  forward: 0,
+  strafe: 0
 };
 
 function joyUpdate(clientX, clientY) {
@@ -221,20 +219,17 @@ function joyUpdate(clientX, clientY) {
 
   joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
 
-  // ВПРАВО (dx>0) → moveX>0 → иду вправо
-  // ВЛЕВО  (dx<0) → moveX<0 → иду влево
-  joy.moveX = dx / JOY_RADIUS;
-
-  // ВВЕРХ (dy<0) → moveZ<0 (назад)
-  // ВНИЗ  (dy>0) → moveZ>0 (вперёд)
-  joy.moveZ = -dy / JOY_RADIUS;
+  // ВВЕРХ (dy<0) → forward>0  → вперёд
+  joy.forward = -dy / JOY_RADIUS;
+  // ВПРАВО (dx>0) → strafe>0  → вправо
+  joy.strafe = dx / JOY_RADIUS;
 }
 
 function joyStop() {
   joy.active = false;
   joy.touchId = null;
-  joy.moveX = 0;
-  joy.moveZ = 0;
+  joy.forward = 0;
+  joy.strafe = 0;
   joyKnob.style.transform = 'translate(0px, 0px)';
 }
 
@@ -400,34 +395,34 @@ function loop() {
   const dt = Math.min((now - lastT) / 1000, 0.05);
   lastT = now;
 
-  // inputX: +1 вправо, -1 влево
-  // inputZ: +1 вперёд, -1 назад
-  let inputX = 0;
-  let inputZ = 0;
+  // forward: +1 вперёд, -1 назад
+  // strafe:  +1 вправо, -1 влево
+  let forward = 0;
+  let strafe = 0;
 
-  if (keys.w) inputZ += 1;
-  if (keys.s) inputZ -= 1;
-  if (keys.d) inputX += 1;
-  if (keys.a) inputX -= 1;
+  if (keys.w) forward += 1;
+  if (keys.s) forward -= 1;
+  if (keys.d) strafe  += 1;
+  if (keys.a) strafe  -= 1;
 
   if (joy.active) {
-    // joy.moveX:  +1 вправо, -1 влево
-    // joy.moveZ:  +1 вперёд, -1 назад  (вверх джойстика = dy<0 → moveZ<0 → НАЗАД... 
-    //                                     а мы хотим ВВЕРХ = НАЗАД, значит moveZ<0 должно давать НАЗАД.
-    //                                     в цикле inputZ положительный = вперёд.
-    //                                     Значит добавляем joy.moveZ как есть:
-    //                                     вверх (dy<0) → moveZ<0 → inputZ<0 → назад ✅
-    //                                     вниз  (dy>0) → moveZ>0 → inputZ>0 → вперёд ✅
-    inputX += joy.moveX;
-    inputZ += joy.moveZ;
+    forward += joy.forward;
+    strafe  += joy.strafe;
   }
 
-  const mag = Math.hypot(inputX, inputZ);
-  if (mag > 1) { inputX /= mag; inputZ /= mag; }
+  const mag = Math.hypot(forward, strafe);
+  if (mag > 1) { forward /= mag; strafe /= mag; }
+
+  // ============ ДВИЖЕНИЕ ОТНОСИТЕЛЬНО ВЗГЛЯДА ============
+  // Камера смотрит вдоль (sin(yaw), cos(yaw)) в плоскости XZ
+  // "вперёд по взгляду" = (sin(yaw), cos(yaw))
+  // "вправо по взгляду" = (cos(yaw), -sin(yaw))
+  const sinY = Math.sin(player.yaw);
+  const cosY = Math.cos(player.yaw);
 
   const speed = player.speed * dt;
-  const moveX = inputX * speed;
-  const moveZ = -inputZ * speed; // forward по -Z в THREE
+  const moveX = (sinY * forward + cosY * strafe) * speed;
+  const moveZ = (cosY * forward - sinY * strafe) * speed;
 
   const newX = player.pos.x + moveX;
   const newZ = player.pos.z + moveZ;
