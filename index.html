@@ -219,14 +219,11 @@ function joyUpdate(clientX, clientY) {
 
   joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
 
-  // ВВЕРХ → вперёд (dy<0 когда палец выше центра → forward>0)
+  // ВВЕРХ (dy<0) → forward>0 → вперёд
   joy.forward = -dy / JOY_RADIUS;
-
-  // ВПРАВО → вправо (dx>0 когда палец правее центра → strafe>0)
+  // ВПРАВО (dx>0) → strafe>0 → вправо
   joy.strafe = dx / JOY_RADIUS;
- }
-
-  
+}
 
 function joyStop() {
   joy.active = false;
@@ -342,6 +339,7 @@ function placeBlock() {
   const gy = Math.round(p.y);
   const gz = Math.round(p.z);
 
+  // Разрешаем ставить на землю (y = 0) и выше
   if (gy < 0 || gy > 40) return;
   if (blocks.some(b => b.position.x === gx && b.position.y === gy && b.position.z === gz)) return;
 
@@ -416,16 +414,20 @@ function loop() {
   const mag = Math.hypot(forward, strafe);
   if (mag > 1) { forward /= mag; strafe /= mag; }
 
-  // ============ ДВИЖЕНИЕ ОТНОСИТЕЛЬНО ВЗГЛЯДА ============
-  // Камера смотрит вдоль (sin(yaw), cos(yaw)) в плоскости XZ.
-  // "вперёд по взгляду" = (sin(yaw), cos(yaw))
-  // "вправо по взгляду" = (cos(yaw), -sin(yaw))
-  const sinY = Math.sin(player.yaw);
-  const cosY = Math.cos(player.yaw);
-
+  // ============ ДВИЖЕНИЕ ОТНОСИТЕЛЬНО ВЗГЛЯДА (через камеру) ============
   const speed = player.speed * dt;
-    const moveX = (-sinY * forward - cosY * strafe) * speed;
-  const moveZ = (-cosY * forward + sinY * strafe) * speed;
+
+  // Направление "вперёд" берём напрямую из камеры
+  const camDir = new THREE.Vector3();
+  camera.getWorldDirection(camDir);
+  camDir.y = 0;
+  camDir.normalize();
+
+  // Направление "вправо" = вперёд × верх
+  const camRight = new THREE.Vector3().crossVectors(camDir, new THREE.Vector3(0, 1, 0)).normalize();
+
+  const moveX = (camDir.x * forward + camRight.x * strafe) * speed;
+  const moveZ = (camDir.z * forward + camRight.z * strafe) * speed;
 
   const newX = player.pos.x + moveX;
   const newZ = player.pos.z + moveZ;
@@ -436,6 +438,7 @@ function loop() {
   player.pos.x = Math.max(-140, Math.min(140, player.pos.x));
   player.pos.z = Math.max(-140, Math.min(140, player.pos.z));
 
+  // Камера
   camera.position.set(player.pos.x, player.height, player.pos.z);
   camera.rotation.order = 'YXZ';
   camera.rotation.y = player.yaw;
