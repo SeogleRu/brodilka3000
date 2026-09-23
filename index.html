@@ -219,11 +219,14 @@ function joyUpdate(clientX, clientY) {
 
   joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
 
-  // ВВЕРХ (dy<0) → forward>0 → вперёд
-  joy.forward = dy / JOY_RADIUS;
-  // ВПРАВО (dx>0) → strafe>0 → вправо
+  // ВВЕРХ → вперёд (dy<0 когда палец выше центра → forward>0)
+  joy.forward = -dy / JOY_RADIUS;
+
+  // ВПРАВО → вправо (dx>0 когда палец правее центра → strafe>0)
   joy.strafe = dx / JOY_RADIUS;
-}
+ }
+
+  
 
 function joyStop() {
   joy.active = false;
