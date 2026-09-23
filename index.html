@@ -219,9 +219,9 @@ function joyUpdate(clientX, clientY) {
 
   joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
 
-  // ВВЕРХ (dy<0) → forward>0  → вперёд
+  // ВВЕРХ (dy<0) → forward>0 → вперёд
   joy.forward = -dy / JOY_RADIUS;
-  // ВПРАВО (dx>0) → strafe>0  → вправо
+  // ВПРАВО (dx>0) → strafe>0 → вправо
   joy.strafe = dx / JOY_RADIUS;
 }
 
@@ -325,7 +325,7 @@ function placeBlock() {
 
   const targets = [ground];
   scene.traverse(obj => {
-    if (obj.isMesh && obj !== ground && !targets.includes(obj)) targets.push(obj);
+    if (obj.isMesh && obj !== ground && !targets.includes(obj) && obj !== grid) targets.push(obj);
   });
 
   const hits = raycaster.intersectObjects(targets, true);
@@ -414,15 +414,15 @@ function loop() {
   if (mag > 1) { forward /= mag; strafe /= mag; }
 
   // ============ ДВИЖЕНИЕ ОТНОСИТЕЛЬНО ВЗГЛЯДА ============
-  // Камера смотрит вдоль (sin(yaw), cos(yaw)) в плоскости XZ
+  // Камера смотрит вдоль (sin(yaw), cos(yaw)) в плоскости XZ.
   // "вперёд по взгляду" = (sin(yaw), cos(yaw))
   // "вправо по взгляду" = (cos(yaw), -sin(yaw))
   const sinY = Math.sin(player.yaw);
   const cosY = Math.cos(player.yaw);
 
   const speed = player.speed * dt;
-    const moveX = (-sinY * forward - cosY * strafe) * speed;
-  const moveZ = (-cosY * forward + sinY * strafe) * speed;
+  const moveX = (sinY * forward + cosY * strafe) * speed;
+  const moveZ = (cosY * forward - sinY * strafe) * speed;
 
   const newX = player.pos.x + moveX;
   const newZ = player.pos.z + moveZ;
