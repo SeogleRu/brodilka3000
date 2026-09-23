@@ -421,8 +421,8 @@ function loop() {
   const cosY = Math.cos(player.yaw);
 
   const speed = player.speed * dt;
-  const moveX = (sinY * forward + cosY * strafe) * speed;
-  const moveZ = (cosY * forward - sinY * strafe) * speed;
+    const moveX = (-sinY * forward - cosY * strafe) * speed;
+  const moveZ = (-cosY * forward + sinY * strafe) * speed;
 
   const newX = player.pos.x + moveX;
   const newZ = player.pos.z + moveZ;
